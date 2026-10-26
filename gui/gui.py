@@ -131,7 +131,7 @@ class DigitRecognizerApp:
         for name, info in MODELS.items():
             row = tk.Frame(m_card, bg=CARD_BG)
             row.pack(fill="x", pady=2)
-            tk.Radiobutton(row, text=name, variable=self.model_var, value=name, font=("Segoe UI", 10), bg=CARD_BG, fg=TEXT_LIGHT, selectcolor=ACCENT, activebackground=CARD_BG, activeforeground=TEXT_LIGHT, command=lambda: self._load_model(self.model_var.get())).pack(side="left")
+            tk.Radiobutton(row, text=name, variable=self.model_var, value=name, font=("Segoe UI", 10), bg=CARD_BG, fg=TEXT_LIGHT, selectcolor=SURFACE, activebackground=CARD_BG, activeforeground=TEXT_LIGHT, command=lambda: self._load_model(self.model_var.get())).pack(side="left")
             tk.Label(row, text=f"({info['desc']})", font=("Segoe UI", 9), bg=CARD_BG, fg=TEXT_MUTED).pack(side="left", padx=(8, 0))
 
         # prediction card
