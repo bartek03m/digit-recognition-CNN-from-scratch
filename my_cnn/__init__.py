@@ -14,3 +14,6 @@ The API is modeled on Keras::
 
 from . import layers, losses, optimizers
 from .model import Model
+
+# public API: what `from my_cnn import *` exports
+__all__ = ["Model", "layers", "losses", "optimizers"]

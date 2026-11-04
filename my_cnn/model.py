@@ -63,7 +63,7 @@ class Model:
         # run through all layers
         out = self.layers[0].forward(np.asarray(X, dtype=np.float32))
         for i in range(1, len(self.layers)):
-             out = self.layers[i].forward(out)
+            out = self.layers[i].forward(out)
         return out
 
     def back_prop(self, grad: np.ndarray) -> np.ndarray:
@@ -79,7 +79,7 @@ class Model:
             dL/d(model input).
         """
         for i in range(len(self.layers)-1, -1, -1):
-           grad = self.layers[i].backward(grad)
+            grad = self.layers[i].backward(grad)
         return grad
 
     def save(self, filepath: str = "model.pkl") -> None:
@@ -223,7 +223,6 @@ class Model:
 
         preds = np.argmax(y_pred, axis=1)
         trues = np.argmax(y, axis=1)
-        acc = np.sum(preds==trues) / len(y)
+        acc = np.sum(preds == trues) / len(y)
 
         return loss_val, acc
-

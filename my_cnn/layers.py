@@ -116,18 +116,18 @@ class Convolution2D:
             kernel_size: int,
             strides: int = 1,
             activation_func: str | None = None,
-        ) -> None:
-            self.no_of_filters: int = no_of_filters
-            self.kernel_size: int = kernel_size
-            self.strides: int = strides
-            self.activation_func: activations.Activation = activations.get_activation(activation_func)
-            self.weights: np.ndarray | None = None
-            self.biases: np.ndarray | None = None
-            self.input: np.ndarray | None = None
-            self.weight_gradient: np.ndarray | None = None
-            self.bias_gradient: np.ndarray | None = None
-            self.patches: np.ndarray | None = None
-            self.output_shape: tuple[int, int] | None = None
+    ) -> None:
+        self.no_of_filters: int = no_of_filters
+        self.kernel_size: int = kernel_size
+        self.strides: int = strides
+        self.activation_func: activations.Activation = activations.get_activation(activation_func)
+        self.weights: np.ndarray | None = None
+        self.biases: np.ndarray | None = None
+        self.input: np.ndarray | None = None
+        self.weight_gradient: np.ndarray | None = None
+        self.bias_gradient: np.ndarray | None = None
+        self.patches: np.ndarray | None = None
+        self.output_shape: tuple[int, int] | None = None
 
     def forward(self, input: ArrayLike) -> np.ndarray:
         """Convolve the input with all filters and apply the activation.
@@ -159,7 +159,7 @@ class Convolution2D:
         input = np.pad(input, ((0, 0), (pad, pad), (pad, pad), (0, 0)))
 
         # extract all kernel-sized patches
-        windows = sliding_window_view(input, (self.kernel_size, self.kernel_size), axis=(1,2))
+        windows = sliding_window_view(input, (self.kernel_size, self.kernel_size), axis=(1, 2))
 
         # skip windows according to stride
         windows = windows[:, ::self.strides, ::self.strides, :, :, :]
@@ -230,8 +230,12 @@ class Convolution2D:
         # scatter patch gradients back using slice-based += (only kernel_size^2 iterations)
         for kh in range(self.kernel_size):
             for kw in range(self.kernel_size):
-                downstream_padded[:, kh : kh + output_height * self.strides : self.strides,
-                                     kw : kw + output_width  * self.strides : self.strides, :] += grad_cols[:, :, :, kh, kw, :]
+                downstream_padded[
+                    :,
+                    kh : kh + output_height * self.strides : self.strides,
+                    kw : kw + output_width * self.strides : self.strides,
+                    :,
+                ] += grad_cols[:, :, :, kh, kw, :]
 
         # strip padding
         if pad > 0:

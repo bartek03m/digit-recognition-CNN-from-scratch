@@ -251,7 +251,6 @@ class DigitRecognizerApp:
             self.btn_brush.config(bg=SURFACE, fg=TEXT_DIM)
             self.btn_eraser.config(bg=ACCENT, fg="#ffffff")
 
-
     def _draw_start(self, event: tk.Event) -> None:
         """Start a stroke: save the current drawing for undo and draw a dot.
 
