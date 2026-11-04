@@ -184,3 +184,5 @@ dataset/
 todo.txt
 debug.png
 digit-recognizer.keras
+# Editor settings
+.vscode/

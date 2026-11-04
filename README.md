@@ -133,10 +133,12 @@ All models use the same split of the MNIST training set: 54,000 images for train
 
 ### Installation
 
+Requires Python 3.10 or newer (tested on Python 3.13).
+
 1. Clone the repository:
    ```bash
-   git clone https://github.com/bartek03m/digit-recognition.git
-   cd digit-recognition
+   git clone https://github.com/bartek03m/digit-recognition-CNN-from-scratch.git
+   cd digit-recognition-CNN-from-scratch
    ```
 
 2. Create and activate a virtual environment:
@@ -145,10 +147,19 @@ All models use the same split of the MNIST training set: 54,000 images for train
    .venv\Scripts\Activate.ps1   # On Linux/macOS: source .venv/bin/activate
    ```
 
-3. Install required dependencies:
+3. Install the project with all dependencies:
    ```bash
-   pip install -r requirements.txt
+   pip install -e ".[all]"
    ```
+
+   Or install only what you need:
+
+   | Command | Installs |
+   | :--- | :--- |
+   | `pip install -e .` | the `my_cnn` library (NumPy only) |
+   | `pip install -e ".[gui]"` | the desktop app with the custom NumPy model, without TensorFlow |
+   | `pip install -e ".[gui,keras]"` | the desktop app with all three models |
+   | `pip install -e ".[all]"` | everything, including the notebooks (same as `pip install -r requirements.txt`) |
 
 ### Running the Application
 
@@ -166,7 +177,7 @@ Draw a digit on the canvas using your mouse, choose a model (Custom NumPy CNN, B
 | [`mycnn.ipynb`](notebooks/mycnn.ipynb) | Training and evaluation of the custom NumPy CNN |
 | [`recognition_without_augmentation.ipynb`](notebooks/recognition_without_augmentation.ipynb) | Keras CNN, baseline |
 | [`recognition_with_augmentation.ipynb`](notebooks/recognition_with_augmentation.ipynb) | Keras CNN with rotations + Gaussian noise |
-| [`final_doc_eng.ipynb`](notebooks/final_doc_eng.ipynb) | Full report: dataset analysis, pixel importance, augmentation, comparison and conclusions ([Polish version](notebooks/final_doc_.ipynb)) |
+| [`report_en.ipynb`](notebooks/report_en.ipynb) | Full report: dataset analysis, pixel importance, augmentation, comparison and conclusions ([Polish version](notebooks/report_pl.ipynb)) |
 
 ## License
 
