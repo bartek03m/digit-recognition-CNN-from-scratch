@@ -1,8 +1,20 @@
-import sys
+"""Desktop app for drawing a digit and classifying it with one of the trained models.
+
+Draw with the mouse, choose a model and press Predict. The drawing is converted to a
+28x28 image prepared the same way as MNIST digits (cropped, scaled to fit a 20x20 box,
+centered by center of mass) before it goes to the model.
+
+Run from the repository root::
+
+    python gui/gui.py
+"""
+
 import os
 import tkinter as tk
-from PIL import Image, ImageDraw, ImageTk
+from typing import Any
+
 import numpy as np
+from PIL import Image, ImageDraw, ImageTk
 
 # high DPI on Windows to prevent blurry text
 try:
@@ -11,9 +23,8 @@ try:
 except Exception:
     pass
 
+# repo root, used to find the saved models
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if BASE_DIR not in sys.path:
-    sys.path.append(BASE_DIR)
 
 # colors
 BG_DARK = "#121214"
@@ -27,7 +38,8 @@ TEXT_DIM = "#a1a1aa"
 TEXT_MUTED = "#71717a"
 CANVAS_BG = "#09090b"
 
-MODELS = {
+# models shown in the app: display name -> file path, type ("custom" or "keras") and a short label
+MODELS: dict[str, dict[str, str]] = {
     "Custom CNN (NumPy)": {
         "path": os.path.join(BASE_DIR, "models", "custom_cnn.pkl"),
         "type": "custom",
@@ -47,33 +59,50 @@ MODELS = {
 
 
 class DigitRecognizerApp:
-    def __init__(self, root):
+    """Main window: drawing canvas, model choice, prediction and class probabilities.
+
+    The drawing is kept twice: on the Tkinter canvas (what the user sees) and in a
+    grayscale PIL image of the same size (what goes to the model).
+
+    Args:
+        root: Main Tkinter window.
+
+    Attributes:
+        model: Loaded model (``my_cnn.Model`` or a Keras model), ``None`` if loading failed.
+        model_type: ``"custom"`` or ``"keras"``.
+        tool: Current tool, ``"brush"`` or ``"eraser"``.
+        image: Grayscale drawing, white strokes on black, ``canvas_size x canvas_size``.
+        undo_stack: Copies of ``image`` from before each stroke or clear.
+    """
+    def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("Digit Recognition")
         self.root.configure(bg=BG_DARK)
         self.root.state("zoomed")
         self.root.minsize(920, 620)
 
-        self.model = None
-        self.model_type = None
+        # my_cnn.Model or a Keras model, so the type is left open
+        self.model: Any = None
+        self.model_type: str | None = None
 
-        self.canvas_size = 400
-        self.brush_size = 18
-        self.tool = "brush"
-        self.last_x = None
-        self.last_y = None
-        self.undo_stack = []
+        self.canvas_size: int = 400
+        self.brush_size: int = 18
+        self.tool: str = "brush"
+        self.last_x: int | None = None
+        self.last_y: int | None = None
+        self.undo_stack: list[Image.Image] = []
 
-        self.image = Image.new("L", (self.canvas_size, self.canvas_size), color=0)
-        self.draw_engine = ImageDraw.Draw(self.image)
-        self.canvas_photo = None
-        self.preview_photo = None
+        self.image: Image.Image = Image.new("L", (self.canvas_size, self.canvas_size), color=0)
+        self.draw_engine: ImageDraw.ImageDraw = ImageDraw.Draw(self.image)
+        self.canvas_photo: ImageTk.PhotoImage | None = None
+        self.preview_photo: ImageTk.PhotoImage | None = None
 
         self._build_ui()
         self._bind_shortcuts()
         self._load_model(list(MODELS.keys())[0])
 
-    def _build_ui(self):
+    def _build_ui(self) -> None:
+        """Create all widgets: header, canvas with tools, model choice, prediction and probability bars."""
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_rowconfigure(1, weight=1)
 
@@ -166,7 +195,11 @@ class DigitRecognizerApp:
         self.prob_canvas.pack(fill="both", expand=True)
         self._update_prob_bars(None, -1)
 
-    def _bind_shortcuts(self):
+    def _bind_shortcuts(self) -> None:
+        """Bind keyboard shortcuts.
+
+        Ctrl+Z: undo, Delete / C: clear, B: brush, E: eraser, Enter: predict.
+        """
         self.root.bind("<Control-z>", lambda e: self._undo())
         self.root.bind("<Control-Z>", lambda e: self._undo())
         self.root.bind("<Delete>", lambda e: self._clear())
@@ -175,7 +208,16 @@ class DigitRecognizerApp:
         self.root.bind("<e>", lambda e: self._set_tool("eraser"))
         self.root.bind("<Return>", lambda e: self._predict())
 
-    def _load_model(self, name):
+    def _load_model(self, name: str) -> None:
+        """Load a model from ``MODELS`` and show the result in the header.
+
+        TensorFlow is imported only when a Keras model is chosen, so the custom
+        NumPy model works without it. If loading fails, ``model`` stays ``None``
+        and the error is printed to the console.
+
+        Args:
+            name: Key in ``MODELS``.
+        """
         info = MODELS[name]
         self.model = None
         self.model_type = info["type"]
@@ -195,7 +237,12 @@ class DigitRecognizerApp:
             self.status_label.config(text=f"error: {name}", fg="#ef4444")
             print(f"Failed to load model {name}: {e}")
 
-    def _set_tool(self, tool):
+    def _set_tool(self, tool: str) -> None:
+        """Switch between brush and eraser and highlight the active button.
+
+        Args:
+            tool: ``"brush"`` or ``"eraser"``.
+        """
         self.tool = tool
         if tool == "brush":
             self.btn_brush.config(bg=ACCENT, fg="#ffffff")
@@ -205,7 +252,14 @@ class DigitRecognizerApp:
             self.btn_eraser.config(bg=ACCENT, fg="#ffffff")
 
 
-    def _draw_start(self, event):
+    def _draw_start(self, event: tk.Event) -> None:
+        """Start a stroke: save the current drawing for undo and draw a dot.
+
+        The undo history keeps at most 20 steps.
+
+        Args:
+            event: Mouse button press on the canvas.
+        """
         if len(self.undo_stack) >= 20:
             self.undo_stack.pop(0)
         self.undo_stack.append(self.image.copy())
@@ -218,7 +272,14 @@ class DigitRecognizerApp:
         self.canvas.create_oval(event.x - r, event.y - r, event.x + r, event.y + r, fill=color_hex, outline=color_hex)
         self.draw_engine.ellipse([event.x - r, event.y - r, event.x + r, event.y + r], fill=color_val)
 
-    def _draw_move(self, event):
+    def _draw_move(self, event: tk.Event) -> None:
+        """Continue the stroke with a line from the last mouse position.
+
+        Draws on both the visible canvas and the PIL image.
+
+        Args:
+            event: Mouse movement with the button held down.
+        """
         if self.last_x is None or self.last_y is None:
             self.last_x, self.last_y = event.x, event.y
             return
@@ -233,11 +294,17 @@ class DigitRecognizerApp:
 
         self.last_x, self.last_y = event.x, event.y
 
-    def _draw_end(self, event):
+    def _draw_end(self, event: tk.Event) -> None:
+        """End the stroke.
+
+        Args:
+            event: Mouse button release.
+        """
         self.last_x = None
         self.last_y = None
 
-    def _undo(self):
+    def _undo(self) -> None:
+        """Restore the drawing from before the last stroke or clear."""
         if not self.undo_stack:
             return
         self.image = self.undo_stack.pop()
@@ -246,7 +313,8 @@ class DigitRecognizerApp:
         self.canvas.delete("all")
         self.canvas.create_image(0, 0, image=self.canvas_photo, anchor="nw")
 
-    def _clear(self):
+    def _clear(self) -> None:
+        """Erase the whole drawing and the prediction. Can be undone."""
         if self.image.getbbox() is not None:
             self.undo_stack.append(self.image.copy())
         self.image = Image.new("L", (self.canvas_size, self.canvas_size), color=0)
@@ -255,13 +323,26 @@ class DigitRecognizerApp:
         self.preview_canvas.delete("all")
         self._reset_results()
 
-    def _reset_results(self):
+    def _reset_results(self) -> None:
+        """Clear the predicted digit, the 28x28 preview and the probability bars."""
         self.digit_label.config(text="-", fg=TEXT_LIGHT)
         self.conf_label.config(text="Draw a digit and click Predict", fg=TEXT_DIM)
         self.preview_canvas.delete("all")
         self._update_prob_bars(None, -1)
 
-    def _preprocess(self):
+    def _preprocess(self) -> tuple[Image.Image | None, np.ndarray | None]:
+        """Convert the drawing into a 28x28 image prepared like MNIST digits.
+
+        Steps: crop to the drawn strokes, scale so the longer side is 20 px,
+        paste into the center of a 28x28 image, then shift so the center of mass
+        lands at the image center (without pushing strokes out of the frame).
+        If SciPy is not available, a whole-pixel shift with ``np.roll`` is used instead.
+
+        Returns:
+            ``(image, tensor)``: the 28x28 image for the preview and the model input of
+            shape ``(1, 28, 28, 1)`` with pixel values 0–255. ``(None, None)`` if the
+            canvas is empty.
+        """
         bbox = self.image.getbbox()
         if bbox is None:
             return None, None
@@ -314,7 +395,12 @@ class DigitRecognizerApp:
         tensor = arr.reshape(1, 28, 28, 1).astype("float32")
         return final, tensor
 
-    def _predict(self):
+    def _predict(self) -> None:
+        """Classify the drawing with the loaded model and show the results.
+
+        Shows the predicted digit, its confidence, the 28x28 model input and the
+        probability of every class.
+        """
         if self.model is None:
             self.conf_label.config(text="No model loaded", fg="#ef4444")
             return
@@ -342,7 +428,13 @@ class DigitRecognizerApp:
         self.conf_label.config(text=f"Digit {digit}  ({confidence:.1f}% confidence)", fg=ACCENT)
         self._update_prob_bars(probs, digit)
 
-    def _update_prob_bars(self, probs, top_digit):
+    def _update_prob_bars(self, probs: np.ndarray | None, top_digit: int) -> None:
+        """Draw one horizontal bar per digit with its probability.
+
+        Args:
+            probs: Probabilities of digits 0–9, shape ``(10,)``, or ``None`` for empty bars.
+            top_digit: Predicted digit, highlighted in the accent color (``-1`` for none).
+        """
         self.prob_canvas.delete("all")
         w = self.prob_canvas.winfo_width()
         if w < 100:
