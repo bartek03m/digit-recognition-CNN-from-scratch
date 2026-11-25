@@ -159,7 +159,7 @@ Requires Python 3.10 or newer (tested on Python 3.13).
    | `pip install -e .` | the `my_cnn` library (NumPy only) |
    | `pip install -e ".[gui]"` | the desktop app with the custom NumPy model, without TensorFlow |
    | `pip install -e ".[gui,keras]"` | the desktop app with all three models |
-   | `pip install -e ".[all]"` | everything, including the notebooks (same as `pip install -r requirements.txt`) |
+   | `pip install -e ".[all]"` | everything, including the notebooks |
 
 ### Running the Application
 
